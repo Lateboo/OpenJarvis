@@ -27,7 +27,9 @@ CLEANUP_PIDS=()
 cleanup() {
   echo ""
   info "Shutting down..."
-  for pid in "${CLEANUP_PIDS[@]}"; do
+  # The "${arr[@]+...}" guard is needed: bash 3.2 (macOS system bash) expands
+  # an empty array to an unbound-variable error under `set -u`.
+  for pid in ${CLEANUP_PIDS[@]+"${CLEANUP_PIDS[@]}"}; do
     kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
@@ -75,6 +77,19 @@ else
   curl -LsSf https://astral.sh/uv/install.sh | sh
   export PATH="$HOME/.local/bin:$PATH"
   ok "uv installed"
+fi
+
+# ── 2b. Check / install Rust ────────────────────────────────────────
+# The Rust extension (step 7b) is mandatory: memory/storage backends fail
+# without the compiled openjarvis_rust module.
+info "Checking Rust toolchain..."
+if command -v rustc &>/dev/null && command -v cargo &>/dev/null; then
+  ok "Rust $(rustc --version | sed 's/^rustc //')"
+else
+  warn "rustc/cargo not found — installing via rustup..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+  export PATH="$HOME/.cargo/bin:$PATH"
+  ok "Rust $(rustc --version | sed 's/^rustc //')"
 fi
 
 # ── 3. Check Node.js ────────────────────────────────────────────────
