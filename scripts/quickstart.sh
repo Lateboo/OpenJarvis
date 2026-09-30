@@ -106,6 +106,21 @@ else
   fail "Node.js not found. Install from https://nodejs.org"
 fi
 
+# The frontend pins npm in its engines field with engine-strict, so bundled
+# npm versions below the pin hard-fail `npm install` (node 24.x bundles 11.12).
+info "Checking npm..."
+NPM_VERSION=$(npm --version 2>/dev/null || echo 0)
+NPM_MAJOR=$(echo "$NPM_VERSION" | cut -d. -f1)
+NPM_MINOR=$(echo "$NPM_VERSION" | cut -d. -f2)
+NPM_PATCH=$(echo "$NPM_VERSION" | cut -d. -f3)
+if [ "$NPM_MAJOR" -eq 11 ] && [ "$NPM_MINOR" -ge 19 ]; then
+  ok "npm $NPM_VERSION"
+else
+  warn "npm $NPM_VERSION is below the frontend's >=11.19.0 <12 pin — upgrading..."
+  npm install -g npm@11.19.0 || fail "Could not upgrade npm. Install npm 11.19+ manually: https://nodejs.org"
+  ok "npm $(npm --version)"
+fi
+
 # ── 4. Check / install Ollama ────────────────────────────────────────
 info "Checking Ollama..."
 if command -v ollama &>/dev/null; then
